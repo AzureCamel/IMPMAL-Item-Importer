@@ -382,6 +382,36 @@ Hooks.once("init", async () => {
     default: "modules/impmal-core/assets/icons/protection/field.webp",
     filePicker: "image"
   });
+
+  game.settings.register(MODULE_ID, "equipmentIcon", {
+    name: "Default Equipment Icon",
+    hint: "Default icon for general equipment (items that are not weapons, armour, shields, force fields, or traits)",
+    scope: "world",
+    config: true,
+    type: String,
+    default: "icons/svg/chest.svg",
+    filePicker: "image"
+  });
+
+  game.settings.register(MODULE_ID, "traitIcon", {
+    name: "Default Trait Icon",
+    hint: "Default icon for trait items",
+    scope: "world",
+    config: true,
+    type: String,
+    default: "icons/svg/book.svg",
+    filePicker: "image"
+  });
+
+  game.settings.register(MODULE_ID, "talentIcon", {
+    name: "Default Talent Icon",
+    hint: "Default icon for talent items",
+    scope: "world",
+    config: true,
+    type: String,
+    default: "icons/svg/book.svg",
+    filePicker: "image"
+  });
 });
 
 Hooks.once("ready", () => {
@@ -413,6 +443,248 @@ Hooks.on("renderItemDirectory", (app, html, data) => {
   importButton.addEventListener("click", (ev) => {
     ev.preventDefault();
     new IMItemImporterApp().render(true);
+  });
+});
+
+/* -------------------------------------------- */
+/* Icon Replacement Feature                     */
+/* -------------------------------------------- */
+
+/**
+ * Categorize an actor's items into weapon subtypes, equipment, and traits.
+ */
+function categorizeActorItems(actor) {
+  const items = actor.items.contents;
+  return {
+    meleeWeapons: items.filter(i => i.type === "weapon" && i.system.attackType === "melee"),
+    rangedWeapons: items.filter(i =>
+      i.type === "weapon" &&
+      i.system.attackType === "ranged" &&
+      i.system.category !== "explosive" &&
+      i.system.category !== "grenadesExplosives"
+    ),
+    grenades: items.filter(i =>
+      i.type === "weapon" &&
+      (i.system.category === "explosive" || i.system.category === "grenadesExplosives")
+    ),
+    talents: items.filter(i => i.type === "talent"),
+    traits: items.filter(i => i.type === "trait"),
+    equipment: items.filter(i => i.type !== "weapon" && i.type !== "trait" && i.type !== "talent")
+  };
+}
+
+/**
+ * Determine the correct icon for an equipment item based on its subtype.
+ * Uses specific icon settings for armour/shields/force fields,
+ * falls back to the generic equipment icon for everything else.
+ */
+function getEquipmentIcon(item) {
+  if (item.type === "protection") {
+    return item.system.category === "shield"
+      ? game.settings.get(MODULE_ID, "shieldIcon")
+      : game.settings.get(MODULE_ID, "armourIcon");
+  }
+  if (item.type === "forceField") {
+    return game.settings.get(MODULE_ID, "forceFieldIcon");
+  }
+  return game.settings.get(MODULE_ID, "equipmentIcon");
+}
+
+/**
+ * Open the Replace Item Icons dialog for an actor.
+ */
+function openReplaceIconsDialog(actor) {
+  const cats = categorizeActorItems(actor);
+
+  const categoryRows = [
+    { id: "melee",     label: "Melee Weapons",         count: cats.meleeWeapons.length,  section: "Weapons" },
+    { id: "ranged",    label: "Ranged Weapons",         count: cats.rangedWeapons.length, section: "Weapons" },
+    { id: "grenades",  label: "Grenades & Explosives",  count: cats.grenades.length,      section: "Weapons" },
+    { id: "talents",   label: "Talents",                 count: cats.talents.length,       section: "Talents & Traits" },
+    { id: "traits",    label: "Traits",                  count: cats.traits.length,        section: "Talents & Traits" },
+    { id: "equipment", label: "Equipment",               count: cats.equipment.length,     section: "Other" }
+  ];
+
+  let currentSection = "";
+  let rowsHtml = "";
+  for (const row of categoryRows) {
+    if (row.section !== currentSection) {
+      currentSection = row.section;
+      rowsHtml += `<div class="impmal-ri-section">${currentSection}</div>`;
+    }
+    const disabled = row.count === 0 ? "disabled" : "";
+    rowsHtml += `
+      <div class="impmal-ri-row">
+        <input type="checkbox" id="impmal-ri-${row.id}" name="${row.id}" ${disabled}>
+        <label for="impmal-ri-${row.id}">${row.label} <span class="impmal-ri-count">(${row.count})</span></label>
+      </div>`;
+  }
+
+  const content = `
+    <style>
+      .impmal-ri-dialog { padding: 0.25rem 0; }
+      .impmal-ri-dialog p { margin: 0 0 0.5rem 0; }
+      .impmal-ri-section {
+        font-weight: bold;
+        margin-top: 0.6rem;
+        padding-bottom: 0.2rem;
+        border-bottom: 1px solid var(--color-border-light-tertiary, #782e22);
+      }
+      .impmal-ri-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.35rem 0.25rem;
+      }
+      .impmal-ri-row label { flex: 1; cursor: pointer; }
+      .impmal-ri-count { color: #888; font-size: 0.9em; }
+      .impmal-ri-row input:disabled + label { opacity: 0.5; cursor: default; }
+    </style>
+    <div class="impmal-ri-dialog">
+      <p>Select which item categories to replace icons for on <strong>${actor.name}</strong>:</p>
+      ${rowsHtml}
+    </div>`;
+
+  new Dialog({
+    title: "Replace Item Icons",
+    content,
+    buttons: {
+      replace: {
+        icon: '<i class="fas fa-icons"></i>',
+        label: "Replace Icons",
+        callback: (html) => {
+          const sel = {
+            melee:     html.find('[name="melee"]').is(":checked"),
+            ranged:    html.find('[name="ranged"]').is(":checked"),
+            grenades:  html.find('[name="grenades"]').is(":checked"),
+            talents:   html.find('[name="talents"]').is(":checked"),
+            traits:    html.find('[name="traits"]').is(":checked"),
+            equipment: html.find('[name="equipment"]').is(":checked")
+          };
+
+          const total =
+            (sel.melee     ? cats.meleeWeapons.length  : 0) +
+            (sel.ranged    ? cats.rangedWeapons.length  : 0) +
+            (sel.grenades  ? cats.grenades.length        : 0) +
+            (sel.talents   ? cats.talents.length          : 0) +
+            (sel.traits    ? cats.traits.length           : 0) +
+            (sel.equipment ? cats.equipment.length        : 0);
+
+          if (total === 0) {
+            ui.notifications.warn("No categories selected or no matching items found.");
+            return;
+          }
+
+          // Confirmation step
+          new Dialog({
+            title: "Confirm Icon Replacement",
+            content: `<p>This will replace icons on <strong>${total}</strong> item(s) on <strong>${actor.name}</strong>.</p><p>This action cannot be undone. Continue?</p>`,
+            buttons: {
+              yes: {
+                icon: '<i class="fas fa-check"></i>',
+                label: "Yes, Replace",
+                callback: () => replaceActorItemIcons(actor, sel, cats)
+              },
+              no: {
+                icon: '<i class="fas fa-times"></i>',
+                label: "Cancel"
+              }
+            },
+            default: "no"
+          }).render(true);
+        }
+      },
+      cancel: {
+        icon: '<i class="fas fa-times"></i>',
+        label: "Cancel"
+      }
+    },
+    default: "replace"
+  }, { width: 420 }).render(true);
+}
+
+/**
+ * Batch-update item icons on an actor based on selected categories.
+ */
+async function replaceActorItemIcons(actor, selections, cats) {
+  const updates = [];
+
+  if (selections.melee) {
+    const icon = game.settings.get(MODULE_ID, "meleeIcon");
+    for (const item of cats.meleeWeapons) updates.push({ _id: item.id, img: icon });
+  }
+  if (selections.ranged) {
+    const icon = game.settings.get(MODULE_ID, "rangedIcon");
+    for (const item of cats.rangedWeapons) updates.push({ _id: item.id, img: icon });
+  }
+  if (selections.grenades) {
+    const icon = game.settings.get(MODULE_ID, "grenadeIcon");
+    for (const item of cats.grenades) updates.push({ _id: item.id, img: icon });
+  }
+  if (selections.equipment) {
+    for (const item of cats.equipment) {
+      updates.push({ _id: item.id, img: getEquipmentIcon(item) });
+    }
+  }
+  if (selections.talents) {
+    const icon = game.settings.get(MODULE_ID, "talentIcon");
+    for (const item of cats.talents) updates.push({ _id: item.id, img: icon });
+  }
+  if (selections.traits) {
+    const icon = game.settings.get(MODULE_ID, "traitIcon");
+    for (const item of cats.traits) updates.push({ _id: item.id, img: icon });
+  }
+
+  if (!updates.length) return;
+
+  try {
+    await actor.updateEmbeddedDocuments("Item", updates);
+    ui.notifications.info(`Successfully replaced icons on ${updates.length} item(s).`);
+  } catch (err) {
+    console.error(`${MODULE_ID} | Failed to replace icons:`, err);
+    ui.notifications.error(`Failed to replace icons: ${err.message}`);
+  }
+}
+
+// --- Header control injection (AppV2 actor sheets) ---
+
+Hooks.on("getHeaderControlsActorSheetV2", (app, controls) => {
+  if (!game.user.isGM) return;
+  // Guard against duplicate entries (V13 bug #12556 workaround)
+  if (controls.some(c => c.action === "impmalReplaceIcons")) return;
+  controls.push({
+    icon: "fas fa-icons",
+    label: "Replace Item Icons",
+    action: "impmalReplaceIcons"
+  });
+});
+
+// Capture-phase click delegation so our handler fires before AppV2's
+// action dispatcher (which would silently ignore the unknown action).
+Hooks.on("renderActorSheetV2", (app) => {
+  if (!game.user.isGM) return;
+  const frame = app.element;
+  if (!frame || frame.dataset.impmalIconBound) return;
+  frame.dataset.impmalIconBound = "true";
+
+  frame.addEventListener("click", (ev) => {
+    const target = ev.target.closest('[data-action="impmalReplaceIcons"]');
+    if (!target) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    openReplaceIconsDialog(app.document);
+  }, true);  // capture phase
+});
+
+// --- Fallback for AppV1 actor sheets ---
+
+Hooks.on("getActorSheetHeaderButtons", (app, buttons) => {
+  if (!game.user.isGM) return;
+  buttons.unshift({
+    class: "impmal-replace-icons",
+    icon: "fas fa-icons",
+    label: "Replace Item Icons",
+    onclick: () => openReplaceIconsDialog(app.document)
   });
 });
 

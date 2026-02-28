@@ -1,8 +1,8 @@
 {
   "id": "impmal-item-importer",
   "title": "IM Item Importer",
-  "description": "Import Warhammer 40,000: Imperium Maledictum weapons and armor from text. Supports melee weapons, ranged weapons, grenades/explosives, and protection items.",
-  "version": "2.0.5",
+  "description": "Import Warhammer 40,000: Imperium Maledictum weapons and armor from text. Supports melee weapons, ranged weapons, grenades/explosives, and protection items. Includes batch icon replacement for actor sheet items.",
+  "version": "2.1.1",
   "compatibility": {
     "minimum": "13",
     "verified": "13"
@@ -26,5 +26,5 @@
   },
   "url": "https://github.com/AzureCamel/IMPMAL-Item-Importer",
   "manifest": "https://github.com/AzureCamel/IMPMAL-Item-Importer/releases/latest/download/module.json",
-  "download": "https://github.com/AzureCamel/IMPMAL-Item-Importer/releases/download/v2.0.5/module.zip"
+  "download": "https://github.com/AzureCamel/IMPMAL-Item-Importer/releases/download/v2.1.1/module.zip"
 }

@@ -1,0 +1,163 @@
+<div class="impmal-item-importer">
+  <style>
+    .impmal-item-importer {
+      padding: 0.5rem;
+    }
+    .impmal-item-importer section {
+      margin-bottom: 0.75rem;
+    }
+    .impmal-item-importer h3 {
+      margin: 0 0 0.5rem 0;
+      padding-bottom: 0.25rem;
+      border-bottom: 1px solid var(--color-border-light-tertiary, #782e22);
+      font-size: 1rem;
+    }
+    .impmal-item-importer .form-group {
+      margin-bottom: 0.5rem;
+    }
+    .impmal-item-importer .form-group label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 0.25rem;
+    }
+    .impmal-item-importer .form-group select {
+      width: 100%;
+    }
+    .impmal-item-importer .form-group .hint {
+      font-size: 0.85em;
+      color: var(--color-text-dark-secondary, #666);
+      margin-top: 0.25rem;
+    }
+    .impmal-item-importer .format-note {
+      margin: 0 0 0.5rem 0;
+      font-size: 0.9em;
+    }
+    .impmal-item-importer .format-note code {
+      background: rgba(0,0,0,0.1);
+      padding: 0.1em 0.3em;
+      border-radius: 3px;
+    }
+    .impmal-item-importer textarea {
+      width: 100%;
+      min-height: 180px;
+      font-family: monospace;
+      font-size: 0.9em;
+      resize: vertical;
+    }
+    .impmal-item-importer .import-actions {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+      margin-top: 0.75rem;
+    }
+    .impmal-item-importer .notes {
+      margin-top: 0.5rem;
+      color: var(--color-text-dark-secondary, #666);
+      font-size: 0.9em;
+    }
+    .impmal-item-importer .notes code {
+      background: rgba(0,0,0,0.1);
+      padding: 0.1em 0.3em;
+      border-radius: 3px;
+    }
+  </style>
+
+  <section class="item-type-selection">
+    <h3><i class="fas fa-tag"></i> Item Type</h3>
+    <div class="form-group">
+      <label>Type</label>
+      <select name="itemType" id="itemType">
+        <option value="weapon" selected>Weapon</option>
+        <option value="protection">Armour</option>
+        <option value="shield">Shield</option>
+        <option value="forceField">Force Field</option>
+      </select>
+    </div>
+    <div class="form-group weapon-category-group">
+      <label>Weapon Category</label>
+      <select name="weaponCategory" id="weaponCategory">
+        <optgroup label="Melee">
+          <option value="mundane">Mundane</option>
+          <option value="chain">Chain</option>
+          <option value="force">Force</option>
+          <option value="shock">Shock</option>
+          <option value="power">Power</option>
+          <option value="daemonbane">Daemonbane</option>
+          <option value="null">Null</option>
+          <option value="tainted">Tainted</option>
+          <option value="exotic">Exotic</option>
+        </optgroup>
+        <optgroup label="Ranged">
+          <option value="bolt">Bolt</option>
+          <option value="flame">Flame</option>
+          <option value="las">Las</option>
+          <option value="launcher">Launcher</option>
+          <option value="melta">Melta</option>
+          <option value="plasma">Plasma</option>
+          <option value="solid">Solid</option>
+          <option value="specialised">Specialised</option>
+          <option value="crossbow">Crossbow</option>
+          <option value="graviton">Graviton</option>
+          <option value="kroot">Kroot</option>
+          <option value="malefic">Malefic</option>
+          <option value="pulse">Pulse</option>
+          <option value="shuriken">Shuriken</option>
+          <option value="splinter">Splinter</option>
+        </optgroup>
+        <optgroup label="Explosives">
+          <option value="grenadesExplosives">Grenades & Explosives</option>
+        </optgroup>
+      </select>
+      <p class="hint">Applies to all weapons in this batch. Grenades are auto-detected.</p>
+    </div>
+  </section>
+
+  <section class="item-input">
+    <h3><i class="fas fa-paste"></i> Item Data</h3>
+    <p class="format-note"><strong>Use <code>|</code> to separate fields.</strong> One item per line.</p>
+    <textarea name="rawInput" placeholder="Paste text from PDF here, then click 'Format Paste' to auto-format.
+
+Or manually format with | delimiters:
+
+MELEE: Name | Spec | Damage | Enc | Cost | Avail | Traits
+RANGED: Name | Spec | Damage | Range | Mag | Enc | Cost | Avail | Traits
+ARMOUR: Name | Category | Armour | Enc | Cost | Avail | Locations | Traits
+SHIELD: Name | Special | - | Enc | Cost | Avail | Traits
+FORCE FIELD: Name | Protection | Overload | Enc | Cost | Avail
+
+Examples:
+Chainsword | One-Handed | 4+Str | 2 | 3,000 | Scarce | Loud, Rend (4)
+Lasgun | Long Gun | 6 | Long | 30 | 2 | 200 | Common | Reliable
+Rosarius | 2d10 | 10 | 0 | 3,000 | Exotic"></textarea>
+  </section>
+
+  <section class="import-options">
+    <h3><i class="fas fa-cog"></i> Options</h3>
+    <div class="form-group">
+      <label>Folder</label>
+      <select name="folder" id="folder">
+        <option value="">— None —</option>
+        {{#each folders}}
+        <option value="{{this.id}}">{{this.name}}</option>
+        {{/each}}
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Custom Traits</label>
+      <div style="display: flex; gap: 0.5rem; align-items: center;">
+        <button type="button" data-action="configureTraits" style="flex-shrink: 0;"><i class="fas fa-cog"></i> Configure Custom Traits</button>
+        <span class="hint" style="margin: 0;">Non-system traits will be added to item Notes.</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="import-actions">
+    <button type="button" data-action="formatPaste" title="Auto-add | delimiters to pasted text"><i class="fas fa-wand-magic-sparkles"></i> Format Paste</button>
+    <button type="button" data-action="preview" title="Parse the data and show a preview"><i class="fas fa-magnifying-glass"></i> Preview</button>
+    <button type="button" data-action="import" title="Import items"><i class="fas fa-file-import"></i> Import</button>
+  </section>
+
+  <p class="notes">
+    <small><strong>Tip:</strong> Paste from PDF, then click <strong>Format Paste</strong> to auto-add <code>|</code> delimiters. Review and adjust if needed.</small>
+  </p>
+</div>
